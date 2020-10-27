@@ -1,0 +1,36 @@
+{
+	"compiler": {
+		"version": "0.4.24+commit.e67f0147"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [],
+		"devdoc": {
+			"methods": {}
+		},
+		"userdoc": {
+			"methods": {}
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"localhost/FiatTokenProxy.sol": "AddressUtils"
+		},
+		"evmVersion": "byzantium",
+		"libraries": {},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"localhost/FiatTokenProxy.sol": {
+			"keccak256": "0xa11d17f0f1988a189c65c78097cfdc7c64f27c78d36f923d2526095f18924c10",
+			"urls": [
+				"bzzr://f527698e6c7ebae431c5da8b1499441aac6b1ce2bf3c1803c6f651bf964718c5"
+			]
+		}
+	},
+	"version": 1
+}

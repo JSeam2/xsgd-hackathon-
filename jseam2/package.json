@@ -1,0 +1,16 @@
+{
+  "name": "zilbridge",
+  "version": "1.0.0",
+  "description": "ZRC2 and ERC20 Bridge for XSGD",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@zilliqa-js/zilliqa": "^1.0.0",
+    "bn.js": "^5.1.3",
+    "tslib": "^2.0.3"
+  }
+}
