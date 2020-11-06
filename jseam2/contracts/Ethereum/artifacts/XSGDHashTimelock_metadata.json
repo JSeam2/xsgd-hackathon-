@@ -1,0 +1,349 @@
+{
+	"compiler": {
+		"version": "0.6.12+commit.27d51765"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_tokenAddress",
+						"type": "address"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "bytes32",
+						"name": "contractId",
+						"type": "bytes32"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "sender",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "receiver",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "bytes32",
+						"name": "hashlock",
+						"type": "bytes32"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "timelock",
+						"type": "uint256"
+					}
+				],
+				"name": "NewContract",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "bytes32",
+						"name": "contractId",
+						"type": "bytes32"
+					}
+				],
+				"name": "Refund",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "bytes32",
+						"name": "contractId",
+						"type": "bytes32"
+					}
+				],
+				"name": "Withdraw",
+				"type": "event"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "_contractId",
+						"type": "bytes32"
+					}
+				],
+				"name": "getContract",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "sender",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "receiver",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "hashlock",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "uint256",
+						"name": "timelock",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bool",
+						"name": "withdrawn",
+						"type": "bool"
+					},
+					{
+						"internalType": "bool",
+						"name": "refunded",
+						"type": "bool"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "preimage",
+						"type": "bytes32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_receiver",
+						"type": "address"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "_hashlock",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_timelock",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_amount",
+						"type": "uint256"
+					}
+				],
+				"name": "newContract",
+				"outputs": [
+					{
+						"internalType": "bytes32",
+						"name": "contractId",
+						"type": "bytes32"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "_contractId",
+						"type": "bytes32"
+					}
+				],
+				"name": "refund",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "tokenAddress",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "_contractId",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "_preimage",
+						"type": "bytes32"
+					}
+				],
+				"name": "withdraw",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {
+				"getContract(bytes32)": {
+					"details": "Get contract details.",
+					"params": {
+						"_contractId": "HTLC contract id"
+					}
+				},
+				"newContract(address,bytes32,uint256,uint256)": {
+					"details": "Sender / Payer sets up a new hash time lock contract depositing the funds and providing the reciever and terms. NOTE: _receiver must first call approve() on the token contract.       See allowance check in tokensTransferable modifier.",
+					"params": {
+						"_amount": "Amount of the token to lock up.",
+						"_hashlock": "keccak256 hash hashlock.",
+						"_receiver": "Receiver of the tokens.",
+						"_timelock": "Block number the contract expires                  Refunds can be made after this time."
+					},
+					"returns": {
+						"contractId": "Id of the new HTLC. This is needed for subsequent                    calls."
+					}
+				},
+				"refund(bytes32)": {
+					"details": "Called by the sender if there was no withdraw AND the time lock has expired. This will restore ownership of the tokens to the sender.",
+					"params": {
+						"_contractId": "Id of HTLC to refund from."
+					},
+					"returns": {
+						"_0": "bool true on success"
+					}
+				},
+				"withdraw(bytes32,bytes32)": {
+					"details": "Called by the receiver once they know the preimage of the hashlock. This will transfer ownership of the locked tokens to their address.",
+					"params": {
+						"_contractId": "Id of the HTLC.",
+						"_preimage": "sha256(_preimage) should equal the contract hashlock."
+					},
+					"returns": {
+						"_0": "bool true on success"
+					}
+				}
+			},
+			"title": "Cross Chain Hash Timelock Atomic Swap Agreements for ERC20 to ZRC2 on Zilliqa  The key purpose of this contract is to swap ERC20 XSGD tokens to ZRC2 XSGD tokens The ethereum side of the timelock handles the hashlock part  implementation adapted from: https://github.com/chatch/hashed-timelock-contract-ethereum/blob/master/contracts/HashedTimelockERC20.sol ",
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"localhost/contracts/Ethereum/XSGDHashTimelock.sol": "XSGDHashTimelock"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"localhost/contracts/Ethereum/XSGDHashTimelock.sol": {
+			"keccak256": "0x419b735142837f97af1574bd1347efe3a5347d33bf462b4ef983423251a77cb5",
+			"license": "GPL-3.0-or-later",
+			"urls": [
+				"bzz-raw://7a6c69f9ca4f850e95916cd6c78a6b10f99f4bb84471bee87afa5dda9e0d9b29",
+				"dweb:/ipfs/QmaZZzTAb1F5rYXzeCV9s4gfd5Wm28nyojAvgbsW9q94R4"
+			]
+		},
+		"openzeppelin-solidity/contracts/GSN/Context.sol": {
+			"keccak256": "0xdb26cbf4d028490f49831a7865c2fe1b28db44b535ca8d343785a3b768aae183",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://840b14ce0315c47d49ba328f1f9fa7654ded1c9e1559e6c5e777a7b2dc28bf0a",
+				"dweb:/ipfs/QmTLLabn4wcfGro9LEmUXUN2nwKqZSotXMvjDCLXEnLtZP"
+			]
+		},
+		"openzeppelin-solidity/contracts/math/SafeMath.sol": {
+			"keccak256": "0x9a9cf02622cd7a64261b10534fc3260449da25c98c9e96d1b4ae8110a20e5806",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://2df142592d1dc267d9549049ee3317fa190d2f87eaa565f86ab05ec83f7ab8f5",
+				"dweb:/ipfs/QmSkJtcfWo7c42KnL5hho6GFxK6HRNV91XABx1P7xDtfLV"
+			]
+		},
+		"openzeppelin-solidity/contracts/token/ERC20/ERC20.sol": {
+			"keccak256": "0x91e0bd6a6762d2a1700dab0849de8422611355100576c4beef1e80d82a4104a0",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://73bbd77af0a8b07255d2ffa20728bcf13b116007c9ddac5d37046cfabb0e1e02",
+				"dweb:/ipfs/QmRgZgWCWCSMTTaok6o4QvWA6MgB4goS8qpb3sN7bAvaZ9"
+			]
+		},
+		"openzeppelin-solidity/contracts/token/ERC20/IERC20.sol": {
+			"keccak256": "0x5c26b39d26f7ed489e555d955dcd3e01872972e71fdd1528e93ec164e4f23385",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://efdc632af6960cf865dbc113665ea1f5b90eab75cc40ec062b2f6ae6da582017",
+				"dweb:/ipfs/QmfAZFDuG62vxmAN9DnXApv7e7PMzPqi4RkqqZHLMSQiY5"
+			]
+		},
+		"openzeppelin-solidity/contracts/utils/Address.sol": {
+			"keccak256": "0xf5fa8cbdffa5ef8be49b246b5628facc30b71707e78a45d80d93b64eff3fe390",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://774e78a9ff32792cc95db4d2ceaf3a7965bb7f0bea5e6cb7cff182b450d44b37",
+				"dweb:/ipfs/QmRRMC4uj7eAcLW7chynA3sNEYULMFazdLwQHKHQPyzAbA"
+			]
+		}
+	},
+	"version": 1
+}

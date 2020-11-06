@@ -7,45 +7,13 @@
 		"abi": [
 			{
 				"constant": false,
-				"inputs": [],
-				"name": "unpause",
-				"outputs": [],
-				"payable": false,
-				"stateMutability": "nonpayable",
-				"type": "function"
-			},
-			{
-				"constant": false,
 				"inputs": [
 					{
-						"name": "_newPauser",
+						"name": "_account",
 						"type": "address"
 					}
 				],
-				"name": "updatePauser",
-				"outputs": [],
-				"payable": false,
-				"stateMutability": "nonpayable",
-				"type": "function"
-			},
-			{
-				"constant": true,
-				"inputs": [],
-				"name": "paused",
-				"outputs": [
-					{
-						"name": "",
-						"type": "bool"
-					}
-				],
-				"payable": false,
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"constant": false,
-				"inputs": [],
-				"name": "pause",
+				"name": "unBlacklist",
 				"outputs": [],
 				"payable": false,
 				"stateMutability": "nonpayable",
@@ -66,9 +34,23 @@
 				"type": "function"
 			},
 			{
+				"constant": false,
+				"inputs": [
+					{
+						"name": "_newBlacklister",
+						"type": "address"
+					}
+				],
+				"name": "updateBlacklister",
+				"outputs": [],
+				"payable": false,
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
 				"constant": true,
 				"inputs": [],
-				"name": "pauser",
+				"name": "blacklister",
 				"outputs": [
 					{
 						"name": "",
@@ -94,15 +76,48 @@
 				"type": "function"
 			},
 			{
-				"anonymous": false,
-				"inputs": [],
-				"name": "Pause",
-				"type": "event"
+				"constant": false,
+				"inputs": [
+					{
+						"name": "_account",
+						"type": "address"
+					}
+				],
+				"name": "blacklist",
+				"outputs": [],
+				"payable": false,
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"constant": true,
+				"inputs": [
+					{
+						"name": "_account",
+						"type": "address"
+					}
+				],
+				"name": "isBlacklisted",
+				"outputs": [
+					{
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"payable": false,
+				"stateMutability": "view",
+				"type": "function"
 			},
 			{
 				"anonymous": false,
-				"inputs": [],
-				"name": "Unpause",
+				"inputs": [
+					{
+						"indexed": true,
+						"name": "_account",
+						"type": "address"
+					}
+				],
+				"name": "Blacklisted",
 				"type": "event"
 			},
 			{
@@ -110,11 +125,23 @@
 				"inputs": [
 					{
 						"indexed": true,
-						"name": "newAddress",
+						"name": "_account",
 						"type": "address"
 					}
 				],
-				"name": "PauserChanged",
+				"name": "UnBlacklisted",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"name": "newBlacklister",
+						"type": "address"
+					}
+				],
+				"name": "BlacklisterChanged",
 				"type": "event"
 			},
 			{
@@ -137,12 +164,21 @@
 		],
 		"devdoc": {
 			"methods": {
+				"blacklist(address)": {
+					"details": "Adds account to blacklist",
+					"params": {
+						"_account": "The address to blacklist"
+					}
+				},
+				"isBlacklisted(address)": {
+					"details": "Checks if account is blacklisted",
+					"params": {
+						"_account": "The address to check"
+					}
+				},
 				"owner()": {
 					"details": "Tells the address of the owner",
 					"return": "the address of the owner"
-				},
-				"pause()": {
-					"details": "called by the owner to pause, triggers stopped state"
 				},
 				"transferOwnership(address)": {
 					"details": "Allows the current owner to transfer control of the contract to a newOwner.",
@@ -150,14 +186,14 @@
 						"newOwner": "The address to transfer ownership to."
 					}
 				},
-				"unpause()": {
-					"details": "called by the owner to unpause, returns to normal state"
-				},
-				"updatePauser(address)": {
-					"details": "update the pauser role"
+				"unBlacklist(address)": {
+					"details": "Removes account from blacklist",
+					"params": {
+						"_account": "The address to remove from the blacklist"
+					}
 				}
 			},
-			"title": "Pausable"
+			"title": "Blacklistable Token"
 		},
 		"userdoc": {
 			"methods": {}
@@ -165,7 +201,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"localhost/FiatTokenV1.sol": "Pausable"
+			"localhost/contracts/Ethereum/xsgd-erc20/FiatTokenV1.sol": "Blacklistable"
 		},
 		"evmVersion": "byzantium",
 		"libraries": {},
@@ -176,7 +212,7 @@
 		"remappings": []
 	},
 	"sources": {
-		"localhost/FiatTokenV1.sol": {
+		"localhost/contracts/Ethereum/xsgd-erc20/FiatTokenV1.sol": {
 			"keccak256": "0x76045b1e2b232c3b3ad3a2eec7062d508cb5d741a73b7f925cd8b0e0bb722428",
 			"urls": [
 				"bzzr://4f20651d10578a1b69ae9d9c4c7928911c45bee832891c2da46adb42abe00063"

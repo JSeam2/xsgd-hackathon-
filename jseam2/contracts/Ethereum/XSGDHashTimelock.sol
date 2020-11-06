@@ -1,4 +1,6 @@
-pragma solidity ^0.7.0;
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+pragma solidity ^0.6.0;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
@@ -17,7 +19,7 @@ contract XSGDHashTimelock {
     // a generic tokenAddress for all contracts should be prohibited.
     address public tokenAddress;
 
-    constructor(address _tokenAddress) {
+    constructor(address _tokenAddress) public {
         tokenAddress = _tokenAddress;
     }
 
@@ -28,9 +30,9 @@ contract XSGDHashTimelock {
         address indexed receiver,
 
         // Agreement params
+        uint256 amount,
         bytes32 hashlock,
-        uint256 timelock,  // using block number
-        uint256 amount
+        uint256 timelock  // using block number
     );
 
     event Withdraw(bytes32 indexed contractId);
@@ -39,18 +41,18 @@ contract XSGDHashTimelock {
     struct Contract {
         address sender;
         address receiver;
+        uint256 amount;
         bytes32 hashlock;
         uint256 timelock;
-        uint256 amount;
-        bytes32 preimage;
-        bool refunded;
         bool withdrawn;
+        bool refunded;
+        bytes32 preimage;
     }
 
-    modifier tokensTransferrable(address _sender, uint256 amount) {
+    modifier tokensTransferable(address _sender, uint256 _amount) {
         require(_amount > 0, "token amount must be > 0");
         require(
-            ERC20(tokenAddress).allowance(_sender, address(this)) >= amount,
+            ERC20(tokenAddress).allowance(_sender, address(this)) >= _amount,
             "token allowance must be >= amount"
         );
         _;
@@ -68,16 +70,22 @@ contract XSGDHashTimelock {
 
     modifier hashlockMatches(bytes32 _contractId, bytes32 preimage) {
         require(
-            contracts[_contractId].hashlock == sha256(abi.encodePacked(preimage)),
-            "preimage is does not match hash"
+            contracts[_contractId].hashlock == keccak256(abi.encodePacked(preimage)),
+            "preimage does not match hash"
         );
         _;
     }
     
+    // allow withdrawal when timelock has passed
+    // timelock is meant to prevent sender from withdrawing prematurely
     modifier withdrawable(bytes32 _contractId) {
         require(
             contracts[_contractId].receiver == msg.sender,
-            "Cannot withdraw as sender is not receiver"
+            "Not receiver"
+        );
+        require(
+            contracts[_contractId].refunded == false,
+            "Already refunded"
         );
         require(
             contracts[_contractId].withdrawn == false,
@@ -115,7 +123,7 @@ contract XSGDHashTimelock {
      * NOTE: _receiver must first call approve() on the token contract.
      *       See allowance check in tokensTransferable modifier.
      * @param _receiver Receiver of the tokens.
-     * @param _hashlock A sha-2 sha256 hash hashlock.
+     * @param _hashlock keccak256 hash hashlock.
      * @param _timelock Block number the contract expires
      *                  Refunds can be made after this time.
      * @param _amount Amount of the token to lock up.
@@ -133,11 +141,11 @@ contract XSGDHashTimelock {
         futureTimelock(_timelock)
         returns (bytes32 contractId)
     {
-        contractId = sha256(
+        contractId = keccak256(
             abi.encodePacked(
                 msg.sender,
                 _receiver,
-                _tokenContract,
+                tokenAddress,
                 _amount,
                 _hashlock,
                 _timelock
@@ -151,10 +159,10 @@ contract XSGDHashTimelock {
             revert("Contract already exists");
 
         // This contract becomes the temporary owner of the tokens
-        if (!ERC20(_tokenContract).transferFrom(msg.sender, address(this), _amount))
+        if (!ERC20(tokenAddress).transferFrom(msg.sender, address(this), _amount))
             revert("transferFrom sender to this failed");
 
-        contracts[contractId] = LockContract(
+        contracts[contractId] = Contract(
             msg.sender,
             _receiver,
             _amount,
@@ -165,11 +173,10 @@ contract XSGDHashTimelock {
             0x0
         );
 
-        emit HTLCERC20New(
+        emit NewContract(
             contractId,
             msg.sender,
             _receiver,
-            tokenAddress,
             _amount,
             _hashlock,
             _timelock
@@ -191,7 +198,7 @@ contract XSGDHashTimelock {
         withdrawable(_contractId)
         returns (bool)
     {
-        LockContract storage c = contracts[_contractId];
+        Contract storage c = contracts[_contractId];
         c.preimage = _preimage;
         c.withdrawn = true;
         ERC20(tokenAddress).transfer(c.receiver, c.amount);
@@ -212,7 +219,7 @@ contract XSGDHashTimelock {
         refundable(_contractId)
         returns (bool)
     {
-        LockContract storage c = contracts[_contractId];
+        Contract storage c = contracts[_contractId];
         c.refunded = true;
         ERC20(tokenAddress).transfer(c.sender, c.amount);
         emit Refund(_contractId);
@@ -222,7 +229,6 @@ contract XSGDHashTimelock {
     /**
      * @dev Get contract details.
      * @param _contractId HTLC contract id
-     * @return All parameters in struct LockContract for _contractId HTLC
      */
     function getContract(bytes32 _contractId)
         public
@@ -239,8 +245,8 @@ contract XSGDHashTimelock {
         )
     {
         if (haveContract(_contractId) == false)
-            return (address(0), address(0), address(0), 0, 0, 0, false, false, 0);
-        LockContract storage c = contracts[_contractId];
+            return (address(0), address(0), 0, 0, 0, false, false, 0);
+        Contract storage c = contracts[_contractId];
         return (
             c.sender,
             c.receiver,
