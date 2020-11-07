@@ -15,31 +15,32 @@ let one_msg =
   Cons {Message} msg nil_msg
 
 let zero_amount = Uint128 0
+let true = True
 
 (* Use a keccak256 hash *)
 let hashlockMatches =
-    fun (hashlock : Option ByStr32) => fun (preimage : String) =>
-    match hashlock with
-    | None => False
-    | Some hashlock =>
-        let computeHash = builtin keccak256hash preimage in
-        builtin eq hashlock computeHash
-    end
+  fun (hashlock : Option ByStr32) => fun (preimage : ByStr32) =>
+  match hashlock with
+  | None => False
+  | Some hashlock =>
+    let computeHash = builtin keccak256hash preimage in
+    builtin eq hashlock computeHash
+  end
 
 let realBoolValue =
-   fun (boolValue : Option Bool) =>
-   match boolValue with
-   | None => False
-   | Some value =>
-      value
-   end
+  fun (boolValue : Option Bool) =>
+  match boolValue with
+  | None => False
+  | Some value =>
+    value
+  end
 
 let futureTimelock =
-    fun (timelock : Uint128) =>
-    fun (current_block : BNum) =>
-    let zero_block = BNum 0 in
-    let timelock_block = builtin badd zero_block timelock in
-    builtin blt current_block timelock_block
+  fun (timelock : Uint128) =>
+  fun (current_block : BNum) =>
+  let zero_block = BNum 0 in
+  let timelock_block = builtin badd zero_block timelock in
+  builtin blt current_block timelock_block
 
 let already_refunded                      = Uint32 1
 let already_withdrawn                     = Uint32 2
@@ -51,6 +52,13 @@ let timelock_in_progress                  = Uint32 7
 let preimage_does_not_match               = Uint32 8
 let not_receiver                          = Uint32 9
 let not_sender                            = Uint32 10
+let receiver_does_not_exist               = Uint32 11
+let sender_does_not_exist                 = Uint32 12
+let timelock_does_not_exist               = Uint32 13
+let amount_does_not_exist                 = Uint32 14
+let hashlock_does_not_exist               = Uint32 15
+let refunded_does_not_exist               = Uint32 16
+let withdrawn_does_not_exist              = Uint32 17
 
 
 (***************************************************)
@@ -63,240 +71,281 @@ contract XSGDHashTimelock (tokenAddress : ByStr20)
 (* This is equivalent to solidity *)
 (* mapping (bytes32 => Contract) contracts *)
 field contract_sender       : Map ByStr32 ByStr20 = Emp ByStr32 ByStr20
-field contract_seceiver     : Map ByStr32 ByStr20 = Emp ByStr32 ByStr20
+field contract_receiver     : Map ByStr32 ByStr20 = Emp ByStr32 ByStr20
 field contract_amount       : Map ByStr32 Uint128 = Emp ByStr32 Uint128
 field contract_hashlock     : Map ByStr32 ByStr32 = Emp ByStr32 ByStr32
 field contract_timelock     : Map ByStr32 Uint128 = Emp ByStr32 Uint128
 field contract_withdrawn    : Map ByStr32 Bool = Emp ByStr32 Bool
 field contract_refunded     : Map ByStr32 Bool = Emp ByStr32 Bool
-field contract_preimage     : Map ByStr32 String = Emp ByStr32 String
+field contract_preimage     : Map ByStr32 ByStr32 = Emp ByStr32 ByStr32
 
 
 transition newContract (
-    receiver : ByStr20, 
-    hashlock : ByStr32, 
-    timelock : Uint128
-    amount : Uint128
+  receiver : ByStr20, 
+  hashlock : ByStr32, 
+  timelock : Uint128,
+  amount : Uint128
 )
-    (* Checks *)
-    (* Skip tokens transferrable check as it is not possible to query field values in current scilla*)
-    (* Rely on failure to execute on XSGD smart conntract *)
-    is_amount_valid = builtin lt zero_amount amount;
+  (* Checks *)
+  (* Skip tokens transferrable check as it is not possible to query field values in current scilla*)
+  (* Rely on failure to execute on XSGD smart conntract *)
+  is_amount_valid = builtin lt zero_amount amount;
 
-    current_block <- & BLOCKNUMBER;
-    is_future_timelock = futureTimelock timelock currentBlock;
+  current_block <- & BLOCKNUMBER;
+  is_future_timelock = futureTimelock timelock current_block;
 
-    match is_future_timelock with
+  match is_future_timelock with
+  | True =>
+    match is_amount_valid with
     | True =>
-        match is_amount_valid with
-        | True =>
-            (* Generate contractId *)
-            sender_str = builtin to_string _sender;
-            timelock_str = builtin to_string timelock;
-            amount_str = builtin to_string amount;
+      (* Generate contractId *)
+      sender_str = builtin to_string _sender;
+      timelock_str = builtin to_string timelock;
+      amount_str = builtin to_string amount;
 
-            merge1 = builtin concat amount_str timelock_str;
-            merge2 = builtin concat receiver hashlock;
-            merge2_str = builtin to_string merge2;
-            merge =  builtin concat merge2_str merge1;
-            final = builtin concat sender_str merge;
-            contractId = builtin keccak256hash final;
+      merge1 = builtin concat amount_str timelock_str;
+      merge2 = builtin concat receiver hashlock;
+      merge2_str = builtin to_string merge2;
+      merge =  builtin concat merge2_str merge1;
+      final = builtin concat sender_str merge;
+      contractId = builtin keccak256hash final;
 
-            is_contract_id_exists <- exists contract_sender[contractId];
+      is_contract_id_exists <- exists contract_sender[contractId];
 
-            match is_contract_id_exists with
-            | True =>
-                e = { _eventname : "error"; code : contract_id_exist};
-                event e
-            | False =>
-                (* set up contractId mapping *)
-                contract_sender[contractId] :=  _sender;
-                contract_receiver[contractId] := receiver;
-                contract_amount[contractId] :=  amount;
-                contract_hashlock[contractId] := hashlock;
-                contract_timelock[contractId] := timelock;
-                is_withdrawn = False;
-                contract_withdrawn[contractId] := is_withdrawn;
-                is_refunded = False;
-                contract_refunded[contractId] := is_refunded;
-
-                e = { 
-                    _eventname : "NewContract"; 
-                    contractId : contractId; 
-                    sender : _sender; 
-                    receiver : receiver; 
-                    amount : amount; 
-                    hashlock : hashlock;  
-                    timelock : timelock
-                };
-                event e;
-
-                (* Call TransferFrom on XSGD Proxy Contract to transfer XSGD to contract *)
-                msg = {
-                    _tag : "TransferFrom"; 
-                    _recipient : tokenAddress;
-                    _amount : zero_amount;
-                    from : _sender;
-                    to : _this_address;
-                    amount: amount
-                };
-                msgs = one_msg msg;
-                send msgs
-            end
-        | False =>
-            e = { _eventname : "error"; code : amount_not_positive};
-            event e
-        end
-    | False =>
-        e = { _eventname : "error"; code : timelock_not_in_future};
+      match is_contract_id_exists with
+      | True =>
+        e = { _eventname : "error"; code : contract_id_exists};
         event e
+      | False =>
+        (* set up contractId mapping *)
+        contract_sender[contractId] :=  _sender;
+        contract_receiver[contractId] := receiver;
+        contract_amount[contractId] :=  amount;
+        contract_hashlock[contractId] := hashlock;
+        contract_timelock[contractId] := timelock;
+        is_withdrawn = False;
+        contract_withdrawn[contractId] := is_withdrawn;
+        is_refunded = False;
+        contract_refunded[contractId] := is_refunded;
+
+        e = { 
+          _eventname : "NewContract"; 
+          contractId : contractId; 
+          sender : _sender; 
+          receiver : receiver; 
+          amount : amount; 
+          hashlock : hashlock;  
+          timelock : timelock
+        };
+        event e;
+
+        (* Call TransferFrom on XSGD Proxy Contract to transfer XSGD to contract *)
+        msg = {
+          _tag : "TransferFrom"; 
+          _recipient : tokenAddress;
+          _amount : zero_amount;
+          from : _sender;
+          to : _this_address;
+          amount: amount
+        };
+        msgs = one_msg msg;
+        send msgs
+      end
+    | False =>
+      e = { _eventname : "error"; code : amount_not_positive};
+      event e
     end
+  | False =>
+    e = { _eventname : "error"; code : timelock_not_in_future};
+    event e
+  end
 end
 
 
 (* Convenience function *)
-transition getContract (ByStr32 _contractId)
-    is_contract_id_exists <- exists contract_sender[_contractId];
+transition getContract (contractId : ByStr32)
+  is_contract_id_exists <- exists contract_sender[contractId];
+
+  (* Check if contract exists *)
+  match is_contract_id_exists with
+  | True =>
+    sender <- contract_sender[contractId];
     
-    match is_contract_id_exists with
-    | True =>
-        sender      <- contract_sender[_contractId];
-        receiver    <- contract_receiver[_contractId];
-        amount      <- contract_amount[_contractId];
-        hashlock    <- contract_hashlock[_contractId];
-        timelock    <- contract_timelock[_contractId];
-        withdrawn   <- contract_withdrawn[_contractId];
-        refunded    <- contract_refunded[_contractId];
-
-        is_preimage_exists <- exists contract_preimage[_contractId];
-
-        match is_preimage_exists with
-        | True =>
-            (* return contract details with preimage *)
-            preimage <- contract_preimage[_contractId];
-
-            e = {
-                _eventname: "getContract";
-                sender: sender;
-                receiver: receiver;
-                amount: amount;
-                hashlock: hashlock;
-                timelock : timelock;
-                withdrawn : withdrawn;
-                refunded : refunded;
-                preimage : preimage;
-            }
-            event e;
-
-        | False =>
-            (* return contract details without preimage *)
-            e = {
-                _eventname: "getContract";
-                contractId: _contractId;
-                sender: sender;
-                receiver: receiver;
-                amount: amount;
-                hashlock: hashlock;
-                timelock : timelock;
-                withdrawn : withdrawn;
-                refunded : refunded;
-            }
-            event e;
-
-        end
+    match sender with
+    | Some sender =>
+      receiver <- contract_receiver[contractId];
+      
+      match receiver with
+      | Some receiver =>
+        amount <- contract_amount[contractId];
         
-    | False => 
-        e = {
-            _eventname: "error";
-            code: contract_id_does_not_exist
-        }
-        event e;
+        match amount with 
+        | Some amount =>
+          hashlock <- contract_hashlock[contractId];
+          
+          match hashlock with
+          | Some hashlock =>
+            timelock <- contract_timelock[contractId];
+            
+            match timelock with
+            | Some timelock =>
+              withdrawn <- contract_withdrawn[contractId];
+              
+              match withdrawn with
+              | Some withdrawn =>
+                refunded <- contract_refunded[contractId];
+                
+                match refunded with
+                | Some refunded =>
+                  preimage <- contract_preimage[contractId];
+                  
+                  match preimage with
+                  | Some preimage =>
+                    e = {
+                      _eventname: "getContractWithPreimage";
+                      sender: sender;
+                      receiver: receiver;
+                      amount: amount;
+                      hashlock: hashlock;
+                      timelock : timelock;
+                      withdrawn : withdrawn;
+                      refunded : refunded;
+                      preimage : preimage
+                    };
+                    event e
+                  
+                  | None =>
+                    e = {
+                      _eventname: "getContractWithoutPreimage";
+                      contractId: contractId;
+                      sender: sender;
+                      receiver: receiver;
+                      amount: amount;
+                      hashlock: hashlock;
+                      timelock : timelock;
+                      withdrawn : withdrawn;
+                      refunded : refunded
+                    };
+                    event e                          
+                  end
+                | None =>
+                  e = {_eventname: "error"; code: refunded_does_not_exist};
+                  event e
+                end
+              | None =>
+                e = {_eventname: "error"; code: withdrawn_does_not_exist};
+                event e
+              end
+            | None =>
+              e = {_eventname: "error"; code: timelock_does_not_exist};
+              event e
+            end
+          | None =>
+            e = {_eventname: "error"; code: hashlock_does_not_exist};
+            event e
+          end
+        | None =>
+          e = {_eventname : "error"; code: amount_does_not_exist};
+          event e
+        end
+      | None =>
+        e = {_eventname : "error"; code: receiver_does_not_exist};
+        event e
+      end
+    | None =>
+      e = {_eventname : "error"; code: sender_does_not_exist};
+      event e
     end
-    
+  | False =>
+    e = {_eventname : "error"; code: contract_id_does_not_exist};
+    event e
+  end
 end
 
 
-transition withdraw (_contractId : ByStr32, _preimage : ByStr32)
-    current_block <- & BLOCKNUMBER;
-    is_contract_id_exists <- exists contract_sender[_contractId];
+transition withdraw (contractId : ByStr32, preimage : ByStr32)
+    is_contract_id_exists <- exists contract_sender[contractId];
 
     (* Check if contract exists *)
     match is_contract_id_exists with
     | True =>
-        (* Check if receiver *)
-        receiver <- contract_receiver[_contractId];
+      (* Check if receiver *)
+      receiver <- contract_receiver[contractId];
+      
+      match receiver with
+      | Some receiver => 
         is_receiver = builtin eq receiver _sender;
 
         match is_receiver with
         | True =>
-            (* Check if refunded *)
-            refunded <- contract_refunded[_contractId];
-            is_refunded = realBoolValue refunded;
-            is_not_refunded = negb is_refunded;
+          (* Check if refunded *)
+          refunded <- contract_refunded[contractId];
+          is_refunded = realBoolValue refunded;
+          is_not_refunded = negb is_refunded;
 
-            match is_not_refunded with 
+          match is_not_refunded with 
+          | True =>
+            (* Check if withdrawn *)
+            withdrawn <- contract_withdrawn[contractId];
+            is_withdrawn = realBoolValue withdrawn;
+            is_not_withdrawn = negb is_withdrawn;
+
+            match is_not_withdrawn with
             | True =>
-                (* Check if withdrawn *)
-                withdrawn <- contract_withdrawn[_contractId];
-                is_withdrawn = realBoolValue withdrawn;
-                is_not_withdrawn = negb is_withdrawn;
+              (* Check if hashlock matches *)
+              hashlock <- contract_hashlock[contractId];
+              is_preimage_match = hashlockMatches hashlock preimage;
 
-                match is_not_withdrawn with
-                | True =>
-                    (* Check if hashlock matches *)
-                    hashlock <- contract_hashlock[_contractId];
-                    is_preimage_match = hashLockMatches hashlock _preimage;
+              match is_preimage_match with
+              | True =>
+                (* Good to go *)
+                (* Update contract details *)
+                contract_withdrawn[contractId] := true;
+                contract_preimage[contractId] := preimage;
 
-                    match is_preimage_match with
-                    | True =>
-                        (* Good to go *)
-                        (* Update contract details *)
-                        is_withdrawn = True;
-                        contract_withdrawn[_contractId] := is_withdrawn;
-                        contract_preimage[_contractId] := preimage;
+                amount <- contract_amount[contractId];
+                match amount with
+                  
+                | Some amount =>
+                  e = {
+                    _eventname: "Withdraw";
+                    contractId: contractId
+                  };
+                  event e;
 
-                        amount <- contract_amount[_contractId];
-                        sender <- contract_sender[_contractId];
-                        timelock <- contract_timelock[_contractId];
-
-                        e = {
-                            _eventname: "Withdraw";
-                            contractId: _contractId;
-                            sender: sender;
-                            receiver: receiver;
-                            amount: amount;
-                            hashlock: hashlock;
-                            timelock : timelock;
-                            withdrawn : is_withdrawn;
-                            refunded : refunded;
-                            preimage : preimage;
-                        }
-
-                        (* Transfer tokens *)
-                        msg = {
-                            _tag : "Transfer"; 
-                            _recipient : tokenAddress;
-                            _amount : zero_amount;
-                            to : receiver;
-                            amount: amount
-                        };
-                        msgs = one_msg msg;
-                        send msgs
-
-                    | False =>
-                        e = { _eventname : "error"; code : preimage_does_not_match};
-                    end 
-                | False =>
-                    e = { _eventname: "error", code : already_withdrawn};
-                    event e
+                  (* Transfer tokens *)
+                  msg = {
+                    _tag : "Transfer"; 
+                    _recipient : tokenAddress;
+                    _amount : zero_amount;
+                    to : receiver;
+                    amount: amount
+                  };
+                  msgs = one_msg msg;
+                  send msgs
+                | None =>
+                  e = {_eventname: "error"; code: amount_does_not_exist};
+                  event e
                 end
-            | False =>
-                e = { _eventname: "error", code: already_refunded};
+              | False =>
+                e = { _eventname : "error"; code : preimage_does_not_match};
                 event e
+              end 
+            | False =>
+              e = { _eventname: "error"; code : already_withdrawn};
+              event e
             end
-        | False =>
-            e = { _eventname: "error"; code : not_receiver};
+          | False =>
+            e = { _eventname: "error"; code: already_refunded};
             event e
+          end
+        | False =>
+          e = { _eventname: "error"; code : not_receiver};
+          event e
+        end          
+      | None =>
+        e = { _eventname : "error"; code : receiver_does_not_exist};
+        event e
         end
     | False =>
         e = { _eventname : "error"; code : contract_id_does_not_exist};
@@ -305,89 +354,114 @@ transition withdraw (_contractId : ByStr32, _preimage : ByStr32)
 end
 
 
-transition refund (_contractId : ByStr32)
-    is_contract_id_exists <- exists contract_sender[_contractId];
+transition refund (contractId : ByStr32)
+  is_contract_id_exists <- exists contract_sender[contractId];
 
-    (* Check if contract exists *)
-    match is_contract_id_exists with
-    | True =>
-        (* Check if sender *)
-        sender <- contract_sender[_contractId];
-        is_sender = builtin eq sender _sender;
+  (* Check if contract exists *)
+  match is_contract_id_exists with
+  | True =>
+    (* Check if sender *)
+    sender <- contract_sender[contractId];
+    
+    match sender with
+    | Some sender =>
+      is_sender = builtin eq sender _sender;
 
-        match is_sender with
+      match is_sender with
+      | True =>
+        (* Check if refunded *)
+        refunded <- contract_refunded[contractId];
+        is_refunded = realBoolValue refunded;
+        is_not_refunded = negb is_refunded;
+
+        match is_not_refunded with 
         | True =>
-            (* Check if refunded *)
-            refunded <- contract_refunded[_contractId];
-            is_refunded = realBoolValue refunded;
-            is_not_refunded = negb is_refunded;
+          (* Check if withdrawn *)
+          withdrawn <- contract_withdrawn[contractId];
+          is_withdrawn = realBoolValue withdrawn;
+          is_not_withdrawn = negb is_withdrawn;
 
-            match is_not_refunded with 
-            | True =>
-                (* Check if withdrawn *)
-                withdrawn <- contract_withdrawn[_contractId];
-                is_withdrawn = realBoolValue withdrawn;
-                is_not_withdrawn = negb is_withdrawn;
+          match is_not_withdrawn with
+          | True =>
+            (* Check if timelock has passed *)
+            current_block <- & BLOCKNUMBER;
+            timelock <- contract_timelock[contractId];
+            
+            match timelock with
+            | Some timelock =>
+              is_timelocked = futureTimelock timelock current_block;
+              is_not_timelocked = negb is_timelocked;
 
-                match is_not_withdrawn with
-                | True =>
-                    (* Check if timelock has passed *)
-                    current_block <- & BLOCKNUMBER;
-                    timelock <- contract_timelock[_contractId];
-                    is_timelocked = futureTimelock timelock current_block;
-                    is_not_timelocked = negb is_timelocked;
+              match is_not_timelocked with
+              | True =>
+                (* Good to go *)
+                (* Update contract details *)
+                contract_refunded[contractId] := true;
 
-                    match is_not_timelocked with
-                    | True =>
-                        (* Good to go *)
-                        (* Update contract details *)
-                        is_refunded = True;
-                        contract_refunded[_contractId] := is_refunded;
-
-                        amount <- contract_amount[_contractId];
-                        receiver <- contract_receiver[_contractId];
-                        hashlock <- contract_hashlock[_contractId];
-
-                        e = {
-                            _eventname: "Refund";
-                            contractId: _contractId;
-                            sender: sender;
-                            receiver: receiver;
-                            amount: amount;
-                            hashlock: hashlock;
-                            timelock : timelock;
-                            withdrawn : withdrawn;
-                            refunded : is_refunded;
-                        }
-
-                        (* Transfer tokens *)
-                        msg = {
-                            _tag : "Transfer"; 
-                            _recipient : tokenAddress;
-                            _amount : zero_amount;
-                            to : sender;
-                            amount: amount
-                        };
-                        msgs = one_msg msg;
-                        send msgs
-
-                    | False =>
-                        e = { _eventname : "error"; code : timelock_in_progress};
-                    end 
-                | False =>
-                    e = { _eventname: "error", code : already_withdrawn};
-                    event e
+                amount <- contract_amount[contractId];
+                
+                match amount with
+                | Some amount =>
+                  e = {
+                    _eventname: "Refund";
+                    contractId: contractId
+                  };
+                  event e;
+    
+                  (* Transfer tokens *)
+                  msg = {
+                    _tag : "Transfer"; 
+                    _recipient : tokenAddress;
+                    _amount : zero_amount;
+                    to : sender;
+                    amount: amount
+                  };
+                  msgs = one_msg msg;
+                  send msgs
+  
+                | None =>
+                  e = {_eventname: "error"; code: amount_does_not_exist};
+                  event e
                 end
-            | False =>
-                e = { _eventname: "error", code: already_refunded};
+
+              | False =>
+                e = { _eventname : "error"; code : timelock_in_progress};
                 event e
+              end 
+            | None =>
+              e = { _eventname : "error"; code : timelock_does_not_exist};
+              event e
             end
-        | False =>
-            e = { _eventname: "error"; code : not_receiver};
+          | False =>
+            e = { _eventname: "error"; code : already_withdrawn};
             event e
+          end
+        | False =>
+          e = { _eventname: "error"; code: already_refunded};
+          event e
         end
-    | False =>
-        e = { _eventname : "error"; code : contract_id_does_not_exist};
-        event e
+      | False =>
+          e = { _eventname: "error"; code : not_receiver};
+          event e
+      end
+    | None =>
+      e = { _eventname : "error"; code : sender_does_not_exist};
+      event e
     end
+  | False =>
+    e = { _eventname : "error"; code : contract_id_does_not_exist};
+    event e
+  end
+end
+
+
+(* ZRC-2 callbacks *)
+
+transition RecipientAcceptTransferFrom (initiator : ByStr20, sender : ByStr20, recipient : ByStr20, amount : Uint128)
+end
+
+transition TransferFromSuccessCallBack (initiator : ByStr20, sender : ByStr20, recipient : ByStr20, amount : Uint128)
+end
+
+transition TransferSuccessCallBack (sender : ByStr20, recipient : ByStr20, amount : Uint128)
 end
