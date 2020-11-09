@@ -297,11 +297,11 @@
 	},
 	"sources": {
 		"localhost/contracts/Ethereum/XSGDHashTimelock.sol": {
-			"keccak256": "0x419b735142837f97af1574bd1347efe3a5347d33bf462b4ef983423251a77cb5",
+			"keccak256": "0xcd95153d1aa79b51ea47e842f203cbf630e5a772be56a241b0104aa7df65133b",
 			"license": "GPL-3.0-or-later",
 			"urls": [
-				"bzz-raw://7a6c69f9ca4f850e95916cd6c78a6b10f99f4bb84471bee87afa5dda9e0d9b29",
-				"dweb:/ipfs/QmaZZzTAb1F5rYXzeCV9s4gfd5Wm28nyojAvgbsW9q94R4"
+				"bzz-raw://4b1b1042da8f92712b64e834e17332e95f5a0cb3312e71b596d16d8b75610e09",
+				"dweb:/ipfs/QmdXD38KJ3xQcGRNLifEjbgMyaXpPqF4T7udasF8s9pDen"
 			]
 		},
 		"openzeppelin-solidity/contracts/GSN/Context.sol": {
