@@ -2,7 +2,7 @@
 
 Youtube Video Explanation and Demo
 
-[https://www.youtube.com/watch?v=Gz7WMF4wWko](https://www.youtube.com/watch?v=Gz7WMF4wWko)
+[https://youtu.be/N3jVM9nxQFg](https://youtu.be/N3jVM9nxQFg)
 
 ## Overview
 There are two key folders. `contracts` holds the scilla and solidty code. `frontend` contains the ui for the smart contracts.
